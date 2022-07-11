@@ -48,13 +48,15 @@ server.listen(SERVER_PORT, () => {
 // ####################################
 // #      socket server settings      #
 // ####################################
+let roomList = {};
 io.on("connection", (socket) => {
   // room id 저장 변수
   let room = "";
 
+  const roomCount = (list) => list[room].length;
+
   // user 참여
   socket.on("join", (msg) => {
-    const check = consoleCheck(room, socket, id, () => roomList[room].length);
     // room id 받아 저장
     room = msg;
 
@@ -63,14 +65,15 @@ io.on("connection", (socket) => {
       roomList[room] = [];
     }
 
+    const check = consoleCheck(room, socket.id, roomCount);
     // roomList의 해당 방에 유저 소켓아이디가 없으면 추가
     if (roomList[room].indexOf(socket.id) === -1) {
       roomList[room].push(socket.id);
     }
 
     // 확인 콘솔
-    consoleCheck.log(room, socket, id, "IN");
-    consoleCheck.log(room, socket, id, () => roomList[room].length);
+    consoleCheck.log(room, socket.id, "IN");
+    consoleCheck.log(room, socket.id, roomCount);
 
     // room에 socket을 join시킴
     socket.join(room);
@@ -84,7 +87,7 @@ io.on("connection", (socket) => {
   });
 
   // offer, answer, icecandidate 교환
-  socket.on("message", (msg) => {
+  socket.on("message", (message) => {
     // icecandidate 등 교환
     socket.broadcast.to(room).emit("message", message);
   });
@@ -106,19 +109,21 @@ const MESSAGE = new (function (TYPES) {
 })(["JOIN", "IN", "OUT"]);
 
 function consoleCheck(roomId, userId, message) {
-  if (typeof message === "string") {
+  if (typeof message !== "function") {
     return `room:${roomId} / user-id:${userId} / [${MESSAGE[message]}]`;
   } else {
-    return `room:${roomId} / user-id:${userId} / [total-users: ${message()}]`;
+    return `room:${roomId} / user-id:${userId} / [total-users: ${message(
+      roomList
+    )}]`;
   }
 }
 
 consoleCheck.log = function (roomId, userId, message) {
-  if (typeof message === "string") {
+  if (typeof message !== "function") {
     console.log(`room:${roomId} / user-id:${userId} / [${MESSAGE[message]}]`);
   } else {
     console.log(
-      `room:${roomId} / user-id:${userId} / [total-users: ${message()}]`
+      `room:${roomId} / user-id:${userId} / [total-users: ${message(roomList)}]`
     );
   }
 };
